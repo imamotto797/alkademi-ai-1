@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alkademi AI - Educational Material Generator</title>
+    
+    <!-- CSS Stylesheets -->
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/shared.css">
+    <link rel="stylesheet" href="/css/upload.css">
+    <link rel="stylesheet" href="/css/generate.css">
+    <link rel="stylesheet" href="/css/materials.css">
+    <link rel="stylesheet" href="/css/analytics.css">
+    <link rel="stylesheet" href="/css/dark-mode.css">
+</head>
+<body>
+    <!-- Theme Manager Script (load early) -->
+    <script>
+        // Load theme preference from localStorage on page load
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+            }
+        })();
+    </script>
+    <!-- Notification Container -->
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-title">
+                <h1>🎓 Alkademi AI</h1>
+                <p>Intelligent Educational Material Generator</p>
+            </div>
+            <div class="header-controls">
+                <div class="header-quota">
+                    <div id="quotaStatus" class="quota-status">
+                        <span>Quota Status:</span>
+                        <div id="quotaDetails" style="font-size: 12px;"></div>
+                    </div>
+                </div>
+                <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">
+                    <span class="theme-toggle-icon">🌙</span>
+                    <span class="theme-label">Dark Mode</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Tab Navigation -->
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="upload">📤 Upload</button>
+            <button class="tab-btn" data-tab="generate">✨ Generate</button>
+            <button class="tab-btn" data-tab="materials">📚 Materials</button>
+            <button class="tab-btn" data-tab="analytics">📊 Analytics</button>
+        </nav>
+
+        <!-- Tab Contents -->
+        <div class="tab-container">
+            <!-- Upload Module -->
+            <div id="upload-container"></div>
+
+            <!-- Generate Module -->
+            <div id="generate-container"></div>
+
+            <!-- Materials Module -->
+            <div id="materials-container"></div>
+
+            <!-- Analytics Module -->
+            <div id="analytics-container"></div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Alkademi AI © 2024 | Powered by Multiple AI Providers</p>
+    </footer>
+
+    <!-- Utility and API Scripts -->
+    <script src="/js/utils.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/themeManager.js"></script>
+    <script src="/js/errorHandler.js"></script>
+    <script src="/js/skeletonLoader.js"></script>
+    <script src="/js/providerSelector.js"></script>
+    <script src="/js/progressIndicator.js"></script>
+
+    <!-- Module Scripts -->
+    <script src="/js/modules/upload.js"></script>
+    <script src="/js/modules/generate.js"></script>
+    <script src="/js/modules/materials.js"></script>
+    <script src="/js/modules/analytics.js"></script>
+
+    <!-- Main Application Script -->
+    <script>
+        /**
+         * Main Application Controller
+         * Handles tab switching, HTML partial loading, and quota status
+         */
+        class AppController {
+            constructor() {
+                this.currentTab = 'upload';
+                this.init();
+            }
+
+            init() {
+                console.log('[AppController] Initializing...');
+                this.loadHTMLPartials();
+                this.setupTabSwitching();
+                this.loadQuotaStatus();
+                setInterval(() => this.loadQuotaStatus(), 60000); // Update quota every minute
+            }
+
+            async loadHTMLPartials() {
+                console.log('[AppController] Loading HTML partials...');
+                const containers = {
+                    'upload': '/html/upload.html',
+                    'generate': '/html/generate.html',
+                    'materials': '/html/materials.html',
+                    'analytics': '/html/analytics.html'
+                };
+
+                for (const [tab, url] of Object.entries(containers)) {
+                    try {
+                        console.log(`[AppController] Fetching ${url}...`);
+                        const response = await fetch(url);
+                        console.log(`[AppController] Fetch response for ${tab}:`, response.status, response.ok);
+                        if (!response.ok) throw new Error(`Failed to load ${tab} - Status: ${response.status}`);
+                        const html = await response.text();
+                        console.log(`[AppController] HTML length for ${tab}:`, html.length);
+                        const container = document.getElementById(`${tab}-container`);
+                        console.log(`[AppController] Container for ${tab}:`, container ? 'found' : 'NOT FOUND');
+                        if (container) {
+                            container.innerHTML = html;
+                            console.log(`[AppController] ✓ Loaded ${tab} partial (${html.length} chars)`);
+                        } else {
+                            console.error(`[AppController] Container ${tab}-container not found in DOM!`);
+                        }
+                    } catch (error) {
+                        console.error(`[AppController] ❌ Error loading ${tab}:`, error);
+                        const container = document.getElementById(`${tab}-container`);
+                        if (container) container.innerHTML = `<p style="color: red;">Failed to load ${tab} module: ${error.message}</p>`;
+                    }
+                }
+
+                // Initialize modules after HTML partials are loaded
+                console.log('[AppController] All partials loaded, initializing modules...');
+                this.initializeModules();
+            }
+
+            initializeModules() {
+                // Initialize all modules after HTML is loaded
+                console.log('[AppController] Initializing modules...');
+                
+                try {
+                    window.uploadModule = new UploadModule();
+                    console.log('[AppController] UploadModule initialized');
+                } catch (e) {
+                    console.error('[AppController] Failed to initialize UploadModule:', e);
+                }
+                
+                try {
+                    window.generateModule = new GenerateModule();
+                    console.log('[AppController] GenerateModule initialized');
+                } catch (e) {
+                    console.error('[AppController] Failed to initialize GenerateModule:', e);
+                }
+                
+                try {
+                    window.materialsModule = new MaterialsModule();
+                    console.log('[AppController] MaterialsModule initialized');
+                } catch (e) {
+                    console.error('[AppController] Failed to initialize MaterialsModule:', e);
+                }
+                
+                try {
+                    window.analyticsModule = new AnalyticsModule();
+                    console.log('[AppController] AnalyticsModule initialized');
+                } catch (e) {
+                    console.error('[AppController] Failed to initialize AnalyticsModule:', e);
+                }
+            }
+
+            setupTabSwitching() {
+                const tabButtons = document.querySelectorAll('.tab-btn');
+                const containers = document.querySelectorAll('[id$="-container"]');
+
+                tabButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const tab = btn.dataset.tab;
+
+                        // Update active button
+                        tabButtons.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+
+                        // Update active container and inner content
+                        containers.forEach(c => {
+                            c.style.display = 'none';
+                            // Remove active class from inner tab-content divs
+                            const innerContent = c.querySelector('.tab-content');
+                            if (innerContent) innerContent.classList.remove('active');
+                        });
+                        
+                        const activeContainer = document.getElementById(`${tab}-container`);
+                        if (activeContainer) {
+                            activeContainer.style.display = 'block';
+                            // Add active class to inner tab-content div
+                            const innerContent = activeContainer.querySelector('.tab-content');
+                            if (innerContent) innerContent.classList.add('active');
+                        }
+
+                        this.currentTab = tab;
+                        
+                        // Reload data for specific tabs when they become active
+                        if (tab === 'generate' && window.generateModule) {
+                            console.log('[AppController] Reloading materials for generate tab');
+                            window.generateModule.loadMaterials();
+                        } else if (tab === 'materials' && window.materialsModule) {
+                            console.log('[AppController] Reloading materials for materials tab');
+                            window.materialsModule.loadMaterials();
+                        } else if (tab === 'analytics' && window.analyticsModule) {
+                            console.log('[AppController] Reloading analytics for analytics tab');
+                            window.analyticsModule.loadAnalytics();
+                        }
+                    });
+                });
+
+                // Set initial active state
+                tabButtons[0].classList.add('active');
+                const initialContainer = document.getElementById('upload-container');
+                if (initialContainer) {
+                    initialContainer.style.display = 'block';
+                    const innerContent = initialContainer.querySelector('.tab-content');
+                    if (innerContent) innerContent.classList.add('active');
+                }
+            }
+
+            async loadQuotaStatus() {
+                try {
+                    const quota = await api.getQuotaStatus();
+                    this.updateQuotaDisplay(quota);
+                } catch (error) {
+                    console.error('Failed to load quota:', error);
+                }
+            }
+
+            updateQuotaDisplay(quota) {
+                const quotaDetails = document.getElementById('quotaDetails');
+                if (!quotaDetails) return;
+
+                let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 8px;">';
+
+                Object.entries(quota).forEach(([provider, status]) => {
+                    const used = status.used || 0;
+                    const limit = status.limit || 0;
+                    const percentage = limit > 0 ? (used / limit) * 100 : 0;
+                    const color = percentage > 80 ? '#f44336' : percentage > 50 ? '#ff9800' : '#4caf50';
+
+                    html += `
+                        <div style="padding: 8px; background: ${color}20; border-left: 3px solid ${color}; border-radius: 4px;">
+                            <strong style="text-transform: capitalize;">${provider}</strong><br>
+                            <small>${used}/${limit} (${Math.round(percentage)}%)</small>
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+                quotaDetails.innerHTML = html;
+            }
+        }
+
+        // Initialize app when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                window.appController = new AppController();
+            });
+        } else {
+            window.appController = new AppController();
+        }
+    </script>
+</body>
+</html>

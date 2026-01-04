@@ -1,0 +1,11 @@
+{
+  "resourceGroupName": "alkademi-ai-rg",
+  "location": "eastus",
+  "appServicePlanName": "alkademi-ai-plan",
+  "appServiceName": "alkademi-ai-app",
+  "containerRegistryName": "alkademiacr",
+  "sqlServerName": "alkademi-sql-server",
+  "sqlDatabaseName": "alkademi_db",
+  "storageAccountName": "alkademistorage",
+  "appInsightsName": "alkademi-ai-insights"
+}

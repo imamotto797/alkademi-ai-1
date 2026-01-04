@@ -1,0 +1,57 @@
+<div id="upload" class="tab-content active">
+    <div class="card">
+        <h2>Upload Source Material</h2>
+        <p style="color: #666; margin-bottom: 20px;">
+            Upload one or more files to create a source material. Multiple files will be combined into a single material.
+        </p>
+        
+        <div class="upload-container">
+            <div>
+                <div style="margin-bottom: 20px;">
+                    <label for="materialTitle" style="display: block; margin-bottom: 8px; font-weight: 500;">Material Title</label>
+                    <input type="text" id="materialTitle" placeholder="e.g., Chapter 5: Photosynthesis" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                    <p style="font-size: 12px; color: #999; margin-top: 4px;">Give your material a descriptive name for easy identification</p>
+                </div>
+                
+                <div class="file-dropzone" id="dropzone">
+                    <div class="file-dropzone-icon">📁</div>
+                    <p>Drag files here or click to select</p>
+                    <p style="font-size: 12px; color: #999;">Supported: PDF, TXT, DOCX (Max 10 files)</p>
+                    <input type="file" id="fileInput" multiple accept=".pdf,.txt,.docx" style="display: none;">
+                </div>
+                
+                <ul id="fileList" class="file-list"></ul>
+                
+                <div id="uploadProgress" class="upload-progress">
+                    <div class="upload-progress-bar">
+                        <div id="uploadProgressFill" class="upload-progress-fill" style="width: 0%;"></div>
+                    </div>
+                    <p id="uploadProgressText" style="text-align: center; font-size: 12px;">Uploading...</p>
+                </div>
+                
+                <div class="upload-actions">
+                    <button id="uploadBtn" class="secondary">Upload Files</button>
+                    <button id="clearFilesBtn" class="danger">Clear All</button>
+                </div>
+            </div>
+            
+            <div>
+                <div class="upload-info">
+                    <div class="upload-info-title">📋 Upload Information</div>
+                    <p><strong>Format Support:</strong> PDF, TXT, DOCX</p>
+                    <p><strong>Max Files:</strong> 10 files</p>
+                    <p><strong>File Size:</strong> Up to 50MB per file</p>
+                    <p><strong>Multiple Files:</strong> Will be combined into one material</p>
+                </div>
+                
+                <div class="upload-info" style="background: #e8f5e9; border-color: #4caf50;">
+                    <div class="upload-info-title" style="color: #2e7d32;">✅ Tips for Best Results</div>
+                    <p>• Use clear, well-structured documents</p>
+                    <p>• Avoid scanned images (use OCR first)</p>
+                    <p>• Remove sensitive information</p>
+                    <p>• Organize content logically</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

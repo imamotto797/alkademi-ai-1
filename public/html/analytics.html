@@ -1,0 +1,71 @@
+<div id="analytics" class="tab-content">
+    <div class="card">
+        <h2>📊 Analytics Dashboard</h2>
+        
+        <div id="analyticsSummary" class="analytics-summary">
+            <!-- Summary stats will be loaded here -->
+        </div>
+        
+        <div class="analytics-section">
+            <h3>📈 Overall Statistics</h3>
+            <div class="stat-cards">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalAccessCount">0</div>
+                    <div class="stat-label">Total Accesses</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalDownloadCount">0</div>
+                    <div class="stat-label">Total Downloads</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="avgRatingDisplay">0</div>
+                    <div class="stat-label">Avg Rating</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalMaterialsCount">0</div>
+                    <div class="stat-label">Total Materials</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="analytics-section">
+            <h3>🏆 Top Materials</h3>
+            <div id="topMaterials" class="top-materials-list">
+                <!-- Top materials will be loaded here -->
+            </div>
+        </div>
+        
+        <div class="analytics-section">
+            <h3>🔍 Search Analytics</h3>
+            <div id="searchAnalytics" class="search-analytics">
+                <!-- Search analytics will be loaded here -->
+            </div>
+        </div>
+        
+        <div class="analytics-section">
+            <h3>⭐ Recent Feedback</h3>
+            <div id="recentFeedback" class="feedback-list">
+                <!-- Recent feedback will be loaded here -->
+            </div>
+        </div>
+        
+        <div class="analytics-section">
+            <h3>📥 Download by Format</h3>
+            <div id="downloadFormats" class="download-formats">
+                <!-- Download format analytics will be loaded here -->
+            </div>
+        </div>
+        
+        <div class="analytics-actions">
+            <button id="refreshAnalyticsBtn" class="secondary">🔄 Refresh</button>
+            <button id="exportAnalyticsBtn" class="secondary">⬇️ Export as CSV</button>
+        </div>
+        
+        <div id="analyticsLoading" class="loading-container">
+            <div class="spinner"></div>
+            <p>Loading analytics...</p>
+        </div>
+        
+        <div id="analyticsError" class="error-box" style="display: none;"></div>
+    </div>
+</div>

@@ -1,0 +1,266 @@
+/* Main Layout and Tabs */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background: #f5f5f5;
+}
+
+.app-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px 20px;
+    border-radius: 8px 8px 0 0;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    flex-wrap: wrap;
+}
+
+.header-title {
+    flex: 1;
+    min-width: 300px;
+}
+
+header h1 {
+    margin: 0 0 10px 0;
+    font-size: 32px;
+}
+
+header p {
+    margin: 0;
+    opacity: 0.9;
+}
+
+.header-controls {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.header-quota {
+    flex: 1;
+    min-width: 200px;
+}
+
+.quota-status {
+    font-size: 14px;
+}
+
+.quota-status span {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 5px;
+}
+
+#quotaDetails {
+    font-size: 12px !important;
+    opacity: 0.9;
+}
+
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.tab {
+    padding: 12px 20px;
+    background: #f0f0f0;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.tab:hover {
+    background: #e0e0e0;
+}
+
+.tab.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Notifications and Status */
+#notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    animation: slideIn 0.3s ease;
+    max-width: 300px;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.notification.success {
+    background: #4caf50;
+    color: white;
+}
+
+.notification.error {
+    background: #f44336;
+    color: white;
+}
+
+.notification.warning {
+    background: #ff9800;
+    color: white;
+}
+
+#quotaStatus {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    max-width: 350px;
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 999;
+}
+
+.quota-header {
+    background: #667eea;
+    color: white;
+    padding: 15px;
+    font-weight: bold;
+    border-radius: 8px 8px 0 0;
+}
+
+#quotaContent {
+    padding: 15px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    header {
+        padding: 20px 15px;
+    }
+
+    .header-content {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .header-title {
+        min-width: 100%;
+    }
+
+    header h1 {
+        font-size: 24px;
+    }
+
+    header p {
+        font-size: 14px;
+    }
+
+    .header-controls {
+        gap: 10px;
+        width: 100%;
+    }
+
+    .header-quota,
+    .theme-toggle {
+        width: 100%;
+    }
+
+    .theme-toggle {
+        justify-content: center;
+    }
+
+    .tabs {
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .tab,
+    .tab-btn {
+        flex: 1;
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+
+    #notification {
+        max-width: calc(100% - 20px);
+        margin: 0 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-title h1 {
+        font-size: 20px;
+    }
+
+    .tab,
+    .tab-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+}

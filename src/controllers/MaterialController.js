@@ -1,0 +1,609 @@
+const materialModel = require('../models/materialModel');
+const nlpService = require('../services/NLPalg');
+const vectorService = require('../services/VectorService');
+const llmService = require('../services/LLMService');
+const quotaService = require('../services/QuotaService');
+const fileParser = require('../utils/fileParser');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    const uploadDir = path.join(__dirname, '../../uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (_req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage });
+
+// Upload and process a single source file
+const uploadSource = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const material = await processFile(req.file, req.body.title);
+    
+    res.status(201).json({
+      success: true,
+      material: {
+        id: material.id,
+        title: material.title,
+        sourceType: material.source_type,
+        keyConcepts: material.keyConcepts,
+        complexity: material.complexity
+      }
+    });
+  } catch (error) {
+    console.error('Error uploading source:', error);
+    res.status(500).json({ error: 'Failed to upload and process source file' });
+  }
+};
+
+// Upload and process multiple source files
+const uploadMultipleSources = async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    const results = [];
+    const errors = [];
+
+    // Process each file
+    for (const file of req.files) {
+      try {
+        const material = await processFile(file);
+        results.push({
+          id: material.id,
+          title: material.title,
+          sourceType: material.source_type,
+          keyConcepts: material.keyConcepts,
+          complexity: material.complexity
+        });
+      } catch (error) {
+        errors.push({
+          filename: file.originalname,
+          error: error.message
+        });
+        console.error(`Error processing file ${file.originalname}:`, error);
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      processed: results.length,
+      failed: errors.length,
+      materials: results,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error('Error uploading multiple sources:', error);
+    res.status(500).json({ error: 'Failed to upload and process source files' });
+  }
+};
+
+// Upload and combine source files into one material (Notebook LLM style)
+const uploadCombinedSources = async (req, res) => {
+  try {
+    console.log('=== UPLOAD COMBINED SOURCES DEBUG ===');
+    console.log('Files received:', req.files?.length || 0);
+    console.log('Title:', req.body.title);
+    
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    const title = req.body.title || 'Untitled Material';
+    let combinedText = '';
+    const fileNames = [];
+    const errors = [];
+
+    console.log(`Processing ${req.files.length} files for combined material "${title}"`);
+
+    // Parse and combine all files
+    for (const file of req.files) {
+      try {
+        const sourceText = await fileParser.parseFile(file.path);
+        fileNames.push(file.originalname);
+        
+        // Add section header for each file (only if multiple files)
+        if (req.files.length > 1) {
+          combinedText += `\n\n=== Source: ${file.originalname} ===\n\n${sourceText}`;
+        } else {
+          combinedText = sourceText; // Single file, no header needed
+        }
+        
+        // Clean up the uploaded file
+        fs.unlinkSync(file.path);
+      } catch (error) {
+        errors.push({ file: file.originalname, error: error.message });
+        console.error(`Error processing file ${file.originalname}:`, error);
+        // Clean up on error
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      }
+    }
+
+    if (!combinedText) {
+      return res.status(400).json({ error: 'Failed to extract content from any files' });
+    }
+
+    // Analyze the combined text
+    const keyConcepts = nlpService.extractKeyConcepts(combinedText);
+    const complexity = nlpService.analyzeComplexity(combinedText);
+    
+    // Determine source type
+    const sourceType = req.files.length > 1 ? 'combined' : path.extname(req.files[0].originalname);
+    
+    // Create a material record with combined content
+    console.log('Creating single material record...');
+    const material = await materialModel.create(
+      title,
+      combinedText,
+      sourceType
+    );
+    console.log(`✓ Created material ID: ${material.id}, Title: "${material.title}"`);
+    
+    // Chunk the text for embedding (RAG pipeline)
+    try {
+      const textChunks = nlpService.chunkText(combinedText);
+      const embeddings = await vectorService.generateEmbeddings(textChunks);
+      if (embeddings.length > 0) {
+        await vectorService.storeEmbeddings(material.id, embeddings);
+        console.log(`✓ Stored ${embeddings.length} embeddings for material ${material.id} (${fileNames.length} source file(s))`);
+      }
+    } catch (embeddingError) {
+      console.warn('Skipping embeddings due to error:', embeddingError.message);
+    }
+    
+    console.log('=== UPLOAD COMBINED SUCCESS ===');
+    console.log(`One material created from ${fileNames.length} files`);
+    
+    res.status(201).json({
+      success: true,
+      material: {
+        id: material.id,
+        title: material.title,
+        sourceType: material.source_type,
+        filesCount: fileNames.length,
+        fileNames: fileNames,
+        keyConcepts,
+        complexity,
+        errors: errors.length > 0 ? errors : undefined
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error uploading combined sources:', error);
+    res.status(500).json({ error: 'Failed to upload and combine source files' });
+  }
+};
+
+// Helper function to process a single file
+const processFile = async (file, customTitle = null) => {
+  try {
+    // Parse the file to extract text
+    const sourceText = await fileParser.parseFile(file.path);
+    
+    // Analyze the source text
+    const keyConcepts = nlpService.extractKeyConcepts(sourceText);
+    const complexity = nlpService.analyzeComplexity(sourceText);
+    
+    // Create a material record
+    const material = await materialModel.create(
+      customTitle || path.basename(file.originalname, path.extname(file.originalname)),
+      sourceText,
+      path.extname(file.originalname)
+    );
+    
+    // Chunk the text for embedding (RAG pipeline - always enabled after NLP)
+    try {
+      const textChunks = nlpService.chunkText(sourceText);
+      const embeddings = await vectorService.generateEmbeddings(textChunks);
+      if (embeddings.length > 0) {
+        await vectorService.storeEmbeddings(material.id, embeddings);
+        console.log(`Stored ${embeddings.length} embeddings for material ${material.id}`);
+      }
+    } catch (embeddingError) {
+      console.warn('Skipping embeddings due to error:', embeddingError.message);
+    }
+    
+    // Clean up the uploaded file
+    fs.unlinkSync(file.path);
+    
+    return {
+      ...material,
+      keyConcepts,
+      complexity
+    };
+  } catch (error) {
+    // Clean up the file if processing fails
+    if (fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
+    throw error;
+  }
+};
+
+// Generate teaching materials from a source
+const generateMaterials = async (req, res) => {
+  try {
+    const { materialId } = req.params;
+    const options = req.body;
+    
+    // Get the source material
+    const material = await materialModel.getById(materialId);
+    if (!material) {
+      return res.status(404).json({ error: 'Material not found' });
+    }
+    
+    // Perform semantic retrieval from VectorDB if focus areas specified
+    let relevantContext = [];
+    if (options.focusAreas && options.focusAreas.length > 0) {
+      try {
+        for (const focusArea of options.focusAreas) {
+          const similarContent = await vectorService.searchSimilarContent(focusArea, 3);
+          relevantContext.push(...similarContent);
+        }
+        console.log(`Retrieved ${relevantContext.length} relevant chunks from VectorDB`);
+      } catch (error) {
+        console.warn('Semantic retrieval failed:', error.message);
+      }
+    }
+    
+    // Generate teaching materials using LLM with RAG context
+    const generatedMaterials = await llmService.generateTeachingMaterials(
+      material.content,
+      options,
+      relevantContext
+    );
+    
+    // First, delete any existing generated materials from this source
+    // This prevents duplicate "Teaching Materials" from piling up
+    try {
+      const existingGenerated = await materialModel.findByTitle(`${material.title} - Teaching Materials`);
+      if (existingGenerated) {
+        await materialModel.delete(existingGenerated.id);
+        console.log(`Replaced previous generated material (ID: ${existingGenerated.id})`);
+      }
+    } catch (e) {
+      console.warn('Could not check for existing generated material:', e.message);
+    }
+    
+    // Create a new material record for the generated content
+    const newMaterial = await materialModel.create(
+      `${material.title} - Teaching Materials`,
+      generatedMaterials,
+      'generated'
+    );
+    
+    res.status(201).json({
+      success: true,
+      material: {
+        id: newMaterial.id,
+        title: newMaterial.title,
+        content: newMaterial.content,
+        sourceType: newMaterial.source_type
+      }
+    });
+  } catch (error) {
+    console.error('Error generating materials:', error);
+    res.status(500).json({ error: 'Failed to generate teaching materials' });
+  }
+};
+
+// Get all materials
+const getAllMaterials = async (req, res) => {
+  try {
+    const materials = await materialModel.getAll();
+    res.status(200).json({
+      success: true,
+      materials
+    });
+  } catch (error) {
+    console.error('Error getting materials:', error);
+    res.status(500).json({ error: 'Failed to retrieve materials' });
+  }
+};
+
+// Get a specific material
+const getMaterial = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const material = await materialModel.getById(id);
+    
+    if (!material) {
+      return res.status(404).json({ error: 'Material not found' });
+    }
+    
+    res.status(200).json({
+      success: true,
+      material
+    });
+  } catch (error) {
+    console.error('Error getting material:', error);
+    res.status(500).json({ error: 'Failed to retrieve material' });
+  }
+};
+
+// Update a material
+const updateMaterial = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content } = req.body;
+    
+    const updatedMaterial = await materialModel.update(id, title, content);
+    
+    if (!updatedMaterial) {
+      return res.status(404).json({ error: 'Material not found' });
+    }
+    
+    res.status(200).json({
+      success: true,
+      material: updatedMaterial
+    });
+  } catch (error) {
+    console.error('Error updating material:', error);
+    res.status(500).json({ error: 'Failed to update material' });
+  }
+};
+
+// Delete a material and cascade delete any generated materials from it
+const deleteMaterial = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get the material to check its title and type
+    const material = await materialModel.getById(id);
+    if (!material) {
+      return res.status(404).json({ error: 'Material not found' });
+    }
+    
+    // If this is a source material, also delete any generated materials from it
+    if (material.source_type !== 'generated') {
+      try {
+        const generatedTitle = `${material.title} - Teaching Materials`;
+        const generatedMaterial = await materialModel.findByTitle(generatedTitle);
+        if (generatedMaterial) {
+          await materialModel.delete(generatedMaterial.id);
+          console.log(`Cascade deleted generated material (ID: ${generatedMaterial.id}) when source was deleted`);
+        }
+      } catch (e) {
+        console.warn('Could not cascade delete generated material:', e.message);
+      }
+    }
+    
+    // Delete the source material
+    const success = await materialModel.delete(id);
+    
+    if (!success) {
+      return res.status(404).json({ error: 'Material not found' });
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: 'Material deleted successfully' + (material.source_type !== 'generated' ? ' (and any generated materials from it)' : '')
+    });
+  } catch (error) {
+    console.error('Error deleting material:', error);
+    res.status(500).json({ error: 'Failed to delete material' });
+  }
+};
+
+// Refine materials based on feedback
+const refineMaterials = async (req, res) => {
+  try {
+    const { materialId } = req.params;
+    const { feedback } = req.body;
+    
+    // Get the material
+    const material = await materialModel.getById(materialId);
+    if (!material) {
+      return res.status(404).json({ error: 'Material not found' });
+    }
+    
+    // Refine the materials using LLM
+    const refinedMaterials = await llmService.refineMaterials(
+      material.content,
+      feedback
+    );
+    
+    // Update the material with the refined content
+    const updatedMaterial = await materialModel.update(
+      materialId,
+      material.title,
+      refinedMaterials
+    );
+    
+    res.status(200).json({
+      success: true,
+      material: updatedMaterial
+    });
+  } catch (error) {
+    console.error('Error refining materials:', error);
+    res.status(500).json({ error: 'Failed to refine materials' });
+  }
+};
+
+// Contextual search using semantic retrieval from VectorDB
+const searchContent = async (req, res) => {
+  try {
+    const { query, limit = 5 } = req.body;
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Query is required' });
+    }
+    
+    // Perform semantic search in VectorDB
+    const results = await vectorService.searchSimilarContent(query, limit);
+    
+    // Get material details for each result
+    const enrichedResults = await Promise.all(
+      results.map(async (result) => {
+        const material = await materialModel.getById(result.material_id);
+        return {
+          materialId: result.material_id,
+          materialTitle: material ? material.title : 'Unknown',
+          chunkText: result.chunk_text,
+          similarity: Math.round(result.similarity * 100) / 100
+        };
+      })
+    );
+    
+    res.status(200).json({
+      success: true,
+      query,
+      results: enrichedResults
+    });
+  } catch (error) {
+    console.error('Error searching content:', error);
+    res.status(500).json({ error: 'Failed to search content' });
+  }
+};
+
+// Get quota status
+const getQuotaStatus = async (req, res) => {
+  try {
+    const status = quotaService.getQuotaStatus();
+    res.status(200).json({
+      success: true,
+      quota: status,
+      links: {
+        gemini: 'https://ai.google.dev/billing/workspace',
+        neon: 'https://console.neon.tech'
+      }
+    });
+  } catch (error) {
+    console.error('Error getting quota status:', error);
+    res.status(500).json({ error: 'Failed to get quota status' });
+  }
+};
+
+// Get API key status
+const getKeyStatus = (req, res) => {
+  try {
+    const keyManager = require('../services/KeyManager');
+    const keyStatus = keyManager.getQuotaStatus();
+    res.json(keyStatus);
+  } catch (error) {
+    console.error('Error getting key status:', error);
+    res.status(500).json({ error: 'Failed to get key status' });
+  }
+};
+
+// Get AI provider status
+const getProviderStatus = (req, res) => {
+  try {
+    const aiProviderManager = require('../services/AIProviderManager');
+    const status = {
+      providers: aiProviderManager.getStatus(),
+      availableModels: aiProviderManager.getAvailableModels(),
+      primaryProvider: process.env.PRIMARY_LLM_PROVIDER || 'gemini'
+    };
+    res.json(status);
+  } catch (error) {
+    console.error('Error getting provider status:', error);
+    res.status(500).json({ error: 'Failed to get provider status' });
+  }
+};
+
+// Regenerate teaching materials for a source (replaces the previously generated material)
+const regenerateMaterials = async (req, res) => {
+  try {
+    const { materialId } = req.params;
+    const options = req.body || {};
+    
+    // Get the source material
+    const material = await materialModel.getById(materialId);
+    if (!material) {
+      return res.status(404).json({ error: 'Source material not found' });
+    }
+    
+    if (material.source_type === 'generated') {
+      return res.status(400).json({ error: 'Cannot regenerate a generated material. Please regenerate the source instead.' });
+    }
+    
+    console.log(`Regenerating teaching materials for source: ${material.title}`);
+    
+    // Perform semantic retrieval from VectorDB if focus areas specified
+    let relevantContext = [];
+    if (options.focusAreas && options.focusAreas.length > 0) {
+      try {
+        for (const focusArea of options.focusAreas) {
+          const similarContent = await vectorService.searchSimilarContent(focusArea, 3);
+          relevantContext.push(...similarContent);
+        }
+        console.log(`Retrieved ${relevantContext.length} relevant chunks from VectorDB`);
+      } catch (error) {
+        console.warn('Semantic retrieval failed:', error.message);
+      }
+    }
+    
+    // Delete the existing generated material
+    try {
+      const existingGenerated = await materialModel.findByTitle(`${material.title} - Teaching Materials`);
+      if (existingGenerated) {
+        await materialModel.delete(existingGenerated.id);
+        console.log(`Deleted previous generated material (ID: ${existingGenerated.id})`);
+      }
+    } catch (e) {
+      console.warn('Could not delete existing generated material:', e.message);
+    }
+    
+    // Generate new teaching materials using LLM with RAG context
+    const generatedMaterials = await llmService.generateTeachingMaterials(
+      material.content,
+      options,
+      relevantContext
+    );
+    
+    // Create a new material record for the generated content
+    const newMaterial = await materialModel.create(
+      `${material.title} - Teaching Materials`,
+      generatedMaterials,
+      'generated'
+    );
+    
+    res.status(201).json({
+      success: true,
+      message: 'Teaching materials regenerated successfully',
+      material: {
+        id: newMaterial.id,
+        title: newMaterial.title,
+        content: newMaterial.content,
+        sourceType: newMaterial.source_type
+      }
+    });
+  } catch (error) {
+    console.error('Error regenerating materials:', error);
+    res.status(500).json({ error: 'Failed to regenerate teaching materials' });
+  }
+};
+
+module.exports = {
+  uploadSource,
+  uploadMultipleSources,
+  uploadCombinedSources,
+  generateMaterials,
+  getAllMaterials,
+  getMaterial,
+  updateMaterial,
+  deleteMaterial,
+  refineMaterials,
+  regenerateMaterials,
+  searchContent,
+  getQuotaStatus,
+  getKeyStatus,
+  getProviderStatus,
+  upload
+};

@@ -1,0 +1,99 @@
+<div id="generate" class="tab-content">
+    <div class="card">
+        <h2>Generate from Materials</h2>
+        
+        <div class="generate-form-container">
+            <div class="form-section">
+                <label for="materialSelect">📚 Select Material</label>
+                <select id="materialSelect" class="form-input">
+                    <option value="">-- Choose a material --</option>
+                </select>
+            </div>
+            
+            <div class="form-section">
+                <label for="generationType">⚙️ Generation Type</label>
+                <div class="generation-type-grid">
+                    <button class="generation-type-btn active" data-type="learning_materials">
+                        📚 Learning Materials
+                    </button>
+                    <button class="generation-type-btn" data-type="learning_planner">
+                        📅 Learning Planner
+                    </button>
+                    <button class="generation-type-btn" data-type="questions">
+                        ❓ Questions
+                    </button>
+                    <button class="generation-type-btn" data-type="quiz">
+                        ✏️ Quiz
+                    </button>
+                </div>
+                <input type="hidden" id="generationType" value="learning_materials">
+            </div>
+            
+            <div class="form-section">
+                <label for="styleSelect">🎨 Teaching Style</label>
+                <select id="styleSelect" class="form-input">
+                    <option value="formal">Formal - Professional and structured</option>
+                    <option value="casual">Casual - Friendly and conversational</option>
+                    <option value="storytelling">Storytelling - Narrative-driven</option>
+                    <option value="academic" selected>Academic - Scholarly and detailed</option>
+                </select>
+            </div>
+            
+            <div class="form-section">
+                <label for="levelSelect">🎯 Education Level</label>
+                <select id="levelSelect" class="form-input">
+                    <option value="sd">SD (Elementary School)</option>
+                    <option value="smp">SMP (Junior High School)</option>
+                    <option value="sma">SMA (Senior High School)</option>
+                    <option value="undergraduate" selected>Undergraduate</option>
+                    <option value="graduate">Graduate</option>
+                    <option value="professional">Professional</option>
+                </select>
+            </div>
+            
+            <div class="form-section">
+                <label for="aiProvider">🤖 AI Provider</label>
+                <select id="aiProvider" class="form-input">
+                    <option value="gemini">Google Gemini</option>
+                    <option value="openai">OpenAI (GPT-4)</option>
+                    <option value="anthropic">Anthropic (Claude)</option>
+                    <option value="nvidia">NVIDIA</option>
+                    <option value="deepseek">DeepSeek</option>
+                    <option value="qwen">Qwen</option>
+                </select>
+                <small style="color: #666;">Providers with different quotas and capabilities. Choose based on your needs.</small>
+            </div>
+            
+            <div id="providerInfo" class="provider-info">
+                <div id="providerDetails"></div>
+            </div>
+            
+            <div class="form-section">
+                <label for="customPrompt">✨ Focus Areas (Optional)</label>
+                <textarea id="customPrompt" class="form-textarea" placeholder="Specify topics to emphasize (e.g., 'Focus on practical applications' or 'Include case studies')"></textarea>
+            </div>
+            
+            <div class="form-actions">
+                <button id="generateBtn" class="primary">Generate</button>
+                <button id="clearGenerateBtn" class="secondary">Clear</button>
+            </div>
+        </div>
+        
+        <div id="generationResults" class="generation-results" style="display: none;">
+            <h3>📋 Generation Results</h3>
+            <div id="resultsContent" class="results-content"></div>
+            <div class="results-actions">
+                <button id="copyResultsBtn" class="secondary">📋 Copy All</button>
+                <button id="downloadResultsBtn" class="secondary">⬇️ Download</button>
+                <button id="newGenerationBtn" class="primary">Generate Again</button>
+            </div>
+        </div>
+        
+        <div id="generationError" class="error-box" style="display: none;"></div>
+        
+        <div id="generationLoading" class="loading-container" style="display: none;">
+            <div class="spinner"></div>
+            <p>Generating with <span id="loadingProvider">selected provider</span>...</p>
+        </div>
+    </div>
+</div>
