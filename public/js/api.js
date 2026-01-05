@@ -157,6 +157,17 @@ class APIManager {
         return this.request(`/analytics/export/${format}`, { method: 'GET' });
     }
 
+    async trackEvent(eventName, eventData = {}) {
+        return this.request('/analytics/track-event', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                eventName, 
+                eventData,
+                timestamp: new Date().toISOString()
+            }),
+        });
+    }
+
     /**
      * Status endpoints
      */

@@ -7,6 +7,9 @@ class AnalyticsModule {
     constructor() {
         this.analyticsData = null;
         this.init();
+        
+        // Track module view
+        api.trackEvent('module_view', { module: 'analytics' }).catch(console.error);
     }
 
     init() {

@@ -15,6 +15,9 @@ class GenerateModule {
             qwen: { name: 'Qwen', color: '#FF6B35', models: ['qwen-turbo'], quota: '32K tokens/min' },
         };
         this.init();
+        
+        // Track module view
+        api.trackEvent('module_view', { module: 'generate' }).catch(console.error);
     }
 
     init() {
@@ -120,6 +123,15 @@ class GenerateModule {
             return;
         }
 
+        // Track generation start
+        api.trackEvent('generation_start', {
+            materialId: materialId,
+            provider: provider,
+            generationType: generationType,
+            style: style,
+            level: level
+        }).catch(console.error);
+
         const loading = document.getElementById('generationLoading');
         const error = document.getElementById('generationError');
         const results = document.getElementById('generationResults');
@@ -134,6 +146,8 @@ class GenerateModule {
 
         // Animate loading steps
         this.animateLoadingSteps();
+        
+        const startTime = Date.now();
 
         try {
             // Map education level to target audience description
@@ -160,10 +174,32 @@ class GenerateModule {
             console.log('[GenerateModule] Generating with options:', options);
             const response = await api.generateMaterials(materialId, options);
             
+            // Track successful generation
+            const duration = Date.now() - startTime;
+            api.trackEvent('generation_complete', {
+                materialId: materialId,
+                provider: provider,
+                generationType: generationType,
+                duration: duration,
+                contentLength: response.material?.content?.length || response.content?.length || 0,
+                success: true
+            }).catch(console.error);
+            
             this.displayResults(response);
             utils.Notification.success('Content generated successfully!');
 
         } catch (error) {
+            // Track failed generation
+            const duration = Date.now() - startTime;
+            api.trackEvent('generation_complete', {
+                materialId: materialId,
+                provider: provider,
+                generationType: generationType,
+                duration: duration,
+                success: false,
+                error: error.message
+            }).catch(console.error);
+            
             const errorMsg = error.message || 'Generation failed';
             document.getElementById('generationError').textContent = errorMsg;
             utils.DOM.show(document.getElementById('generationError'));

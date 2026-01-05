@@ -9,6 +9,9 @@ class MaterialsModule {
         this.filteredMaterials = [];
         this.currentMaterial = null;
         this.init();
+        
+        // Track module view
+        api.trackEvent('module_view', { module: 'materials' }).catch(console.error);
     }
 
     init() {
@@ -136,6 +139,13 @@ class MaterialsModule {
     showMaterialDetail(material) {
         this.currentMaterial = material;
         
+        // Track material view
+        api.trackEvent('material_view', {
+            materialId: material.id,
+            title: material.title,
+            sourceType: material.source_type
+        }).catch(console.error);
+        
         const title = document.getElementById('materialModalTitle');
         const body = document.getElementById('materialModalBody');
         const modal = document.getElementById('materialModal');
@@ -239,6 +249,12 @@ class MaterialsModule {
             material.name.toLowerCase().includes(query) ||
             (material.description && material.description.toLowerCase().includes(query))
         );
+
+        // Track search event
+        api.trackEvent('materials_search', {
+            query: query,
+            resultsCount: this.filteredMaterials.length
+        }).catch(console.error);
 
         this.renderMaterials();
 

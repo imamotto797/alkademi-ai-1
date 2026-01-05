@@ -10,6 +10,9 @@ class UploadModule {
         this.maxFileSize = 50 * 1024 * 1024; // 50MB
         this.allowedTypes = ['.pdf', '.txt', '.docx'];
         this.init();
+        
+        // Track module view
+        api.trackEvent('module_view', { module: 'upload' }).catch(console.error);
     }
 
     init() {
@@ -90,6 +93,16 @@ class UploadModule {
 
             this.selectedFiles.push(file);
             console.log('[UploadModule] Added file:', file.name);
+        }
+
+        // Track file selection
+        if (this.selectedFiles.length > 0) {
+            const totalSize = this.selectedFiles.reduce((sum, f) => sum + f.size, 0);
+            api.trackEvent('files_selected', { 
+                fileCount: this.selectedFiles.length,
+                totalSize: totalSize,
+                averageSize: totalSize / this.selectedFiles.length
+            }).catch(console.error);
         }
 
         this.updateFileList();
@@ -182,6 +195,16 @@ class UploadModule {
                         console.log('[UploadModule] Upload response:', response);
                         if (response.success || response.material) {
                             utils.Notification.success(`Successfully uploaded "${title}" (${this.selectedFiles.length} file(s))`);
+                            
+                            // Track successful upload
+                            const totalSize = this.selectedFiles.reduce((sum, f) => sum + f.size, 0);
+                            api.trackEvent('upload_complete', {
+                                fileCount: this.selectedFiles.length,
+                                totalSize: totalSize,
+                                materialTitle: title,
+                                materialId: response.material?.id
+                            }).catch(console.error);
+                            
                             this.clearFiles();
                             document.getElementById('materialTitle').value = '';
                             progressFill.style.width = '100%';
