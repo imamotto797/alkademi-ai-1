@@ -16,21 +16,27 @@ class MaterialsModule {
 
     init() {
         console.log('[MaterialsModule] Initializing...');
-        if (!document.getElementById('materialsContainer')) {
+        const container = document.getElementById('materialsContainer');
+        if (!container) {
             console.warn('[MaterialsModule] materialsContainer element not found - skipping init');
             return;
         }
 
         // Search functionality
         const searchInput = document.getElementById('materialsSearch');
-        searchInput.addEventListener('input', (e) => this.searchMaterials(e.target.value));
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => this.searchMaterials(e.target.value));
+        }
 
         // Modal close buttons
-        document.getElementById('closeModalBtn').addEventListener('click', () => this.closeModal());
-        document.getElementById('closeModalBtn2').addEventListener('click', () => this.closeModal());
+        const closeBtn1 = document.getElementById('closeModalBtn');
+        if (closeBtn1) closeBtn1.addEventListener('click', () => this.closeModal());
+        const closeBtn2 = document.getElementById('closeModalBtn2');
+        if (closeBtn2) closeBtn2.addEventListener('click', () => this.closeModal());
 
         // Delete button
-        document.getElementById('deleteMaterialBtn').addEventListener('click', () => this.deleteMaterial());
+        const deleteBtn = document.getElementById('deleteMaterialBtn');
+        if (deleteBtn) deleteBtn.addEventListener('click', () => this.deleteMaterial());
 
         // Event delegation for material card actions (replaces per-card listeners for better perf)
         container.addEventListener('click', (e) => this.handleCardAction(e), true);
