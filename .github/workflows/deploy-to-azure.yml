@@ -20,7 +20,7 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm ci --only=production
+        run: npm ci
 
       - name: Deploy to Azure App Service
         uses: azure/webapps-deploy@v2
