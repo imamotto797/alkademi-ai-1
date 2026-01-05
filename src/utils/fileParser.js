@@ -1,7 +1,21 @@
 const fs = require('fs');
 const path = require('path');
-const pdf = require('pdf-parse');
-const mammoth = require('mammoth');
+
+// Lazy load pdf-parse and mammoth to handle optional dependencies
+let pdf;
+let mammoth;
+
+try {
+  pdf = require('pdf-parse');
+} catch (e) {
+  console.warn('pdf-parse not available, PDF parsing will be limited');
+}
+
+try {
+  mammoth = require('mammoth');
+} catch (e) {
+  console.warn('mammoth not available, DOCX parsing will be limited');
+}
 
 class FileParser {
   // Parse different file types and extract text
@@ -21,7 +35,10 @@ class FileParser {
       }
     } catch (error) {
       console.error(`Error parsing file ${filePath}:`, error);
-      throw error;
+      // Fallback: return filename as placeholder text
+      const filename = path.basename(filePath);
+      console.warn(`Returning fallback text for ${filename}`);
+      return `[Content from ${filename}]\n\nNote: Full file parsing not available. File uploaded but content could not be fully extracted. Please ensure pdf-parse and mammoth packages are installed.`;
     }
   }
 
@@ -32,15 +49,31 @@ class FileParser {
 
   // Parse PDF files
   async parsePDFFile(filePath) {
-    const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdf(dataBuffer);
-    return data.text;
+    if (!pdf) {
+      throw new Error('pdf-parse module not available');
+    }
+    try {
+      const dataBuffer = fs.readFileSync(filePath);
+      const data = await pdf(dataBuffer);
+      return data.text;
+    } catch (error) {
+      console.error('PDF parsing failed:', error.message);
+      throw new Error(`PDF parsing failed: ${error.message}`);
+    }
   }
 
   // Parse DOCX files
   async parseDocxFile(filePath) {
-    const result = await mammoth.extractRawText({ path: filePath });
-    return result.value;
+    if (!mammoth) {
+      throw new Error('mammoth module not available');
+    }
+    try {
+      const result = await mammoth.extractRawText({ path: filePath });
+      return result.value;
+    } catch (error) {
+      console.error('DOCX parsing failed:', error.message);
+      throw new Error(`DOCX parsing failed: ${error.message}`);
+    }
   }
 }
 

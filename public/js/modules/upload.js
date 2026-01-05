@@ -242,11 +242,14 @@ class UploadModule {
                     }
                 } else {
                     try {
-                        const error = JSON.parse(xhr.responseText);
-                        throw new Error(error.error || `Upload failed with status ${xhr.status}`);
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        const errorMsg = errorResponse.details || errorResponse.message || errorResponse.error || `Upload failed with status ${xhr.status}`;
+                        console.error('[UploadModule] Server error:', errorResponse);
+                        throw new Error(errorMsg);
                     } catch (e) {
                         console.error('[UploadModule] Upload error:', e.message);
-                        utils.Notification.error(e.message);
+                        const displayMsg = e.message || 'Something went wrong during upload!';
+                        utils.Notification.error(displayMsg);
                         uploadBtn.disabled = false;
                     }
                 }

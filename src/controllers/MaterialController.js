@@ -113,7 +113,9 @@ const uploadCombinedSources = async (req, res) => {
     // Parse and combine all files
     for (const file of req.files) {
       try {
+        console.log(`Parsing file: ${file.originalname} (path: ${file.path})`);
         const sourceText = await fileParser.parseFile(file.path);
+        console.log(`✓ Successfully parsed ${file.originalname}, extracted ${sourceText.length} characters`);
         fileNames.push(file.originalname);
         
         // Add section header for each file (only if multiple files)
@@ -162,12 +164,18 @@ const uploadCombinedSources = async (req, res) => {
     
     // Create a material record with combined content
     console.log('Creating single material record...');
-    const material = await materialModel.create(
-      title,
-      combinedText,
-      sourceType
-    );
-    console.log(`✓ Created material ID: ${material.id}, Title: "${material.title}"`);
+    let material;
+    try {
+      material = await materialModel.create(
+        title,
+        combinedText,
+        sourceType
+      );
+      console.log(`✓ Created material ID: ${material.id}, Title: "${material.title}"`);
+    } catch (dbError) {
+      console.error('❌ Database error creating material:', dbError);
+      throw new Error(`Failed to create material in database: ${dbError.message}`);
+    }
     
     // Chunk the text for embedding (RAG pipeline)
     try {
@@ -199,7 +207,13 @@ const uploadCombinedSources = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error uploading combined sources:', error);
-    res.status(500).json({ error: 'Failed to upload and combine source files' });
+    console.error('Error stack:', error.stack);
+    // Return detailed error for debugging (safe to expose in development/early stage)
+    res.status(500).json({ 
+      error: 'Failed to upload and combine source files',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      message: error.message
+    });
   }
 };
 
