@@ -244,6 +244,12 @@
                 try {
                     const quota = await api.getQuotaStatus();
                     this.updateQuotaDisplay(quota);
+                    
+                    // Check for trial credit warnings (Gemini tier 1)
+                    const creditWarning = await api.getCreditWarning();
+                    if (creditWarning && creditWarning.warningLevel !== 'ok') {
+                        this.showCreditWarning(creditWarning);
+                    }
                 } catch (error) {
                     console.error('Failed to load quota:', error);
                 }
@@ -271,9 +277,12 @@
                     const color = percentage > 80 ? '#f44336' : percentage > 50 ? '#ff9800' : '#4caf50';
                     const icon = percentage > 80 ? '⚠️' : percentage > 50 ? '⏱️' : '✅';
 
+                    // Highlight Gemini (tier 1) in quota display
+                    const isTier1 = provider === 'gemini' ? ' (Tier 1)' : '';
+                    
                     html += `
                         <div style="padding: 5px 8px; background: ${color}12; border-left: 2px solid ${color}; border-radius: 3px; font-size: 10px; line-height: 1.3;">
-                            <strong style="text-transform: capitalize;">${icon} ${provider}</strong><br>
+                            <strong style="text-transform: capitalize;">${icon} ${provider}${isTier1}</strong><br>
                             <small>${used}/${limit} (${Math.round(percentage)}%)</small>
                         </div>
                     `;
@@ -281,6 +290,14 @@
 
                 html += '</div>';
                 quotaDetails.innerHTML = html;
+            }
+
+            showCreditWarning(creditWarning) {
+                const message = creditWarning.warningLevel === 'critical'
+                    ? `⚠️ Trial Account: ${creditWarning.usagePercentage}% credits used! Only ${creditWarning.tokensRemaining} tokens remaining.`
+                    : `⏱️ Trial Account: ${creditWarning.usagePercentage}% credits used. ${creditWarning.tokensRemaining} tokens remaining.`;
+                
+                showNotification(message, creditWarning.warningLevel === 'critical' ? 'error' : 'warning');
             }
         }
 

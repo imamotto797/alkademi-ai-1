@@ -175,6 +175,16 @@ class APIManager {
         return this.request('/materials/status/quota', { method: 'GET' });
     }
 
+    async getCreditWarning() {
+        // Get trial account credit warning from backend
+        try {
+            return this.request('/materials/status/credit-warning', { method: 'GET' });
+        } catch (error) {
+            // Return null if endpoint doesn't exist, graceful fallback
+            return null;
+        }
+    }
+
     async getKeyStatus() {
         return this.request('/materials/status/keys', { method: 'GET' });
     }

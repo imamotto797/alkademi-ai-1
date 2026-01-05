@@ -1,16 +1,19 @@
 class QuotaService {
   constructor() {
     // Store quota info with timestamps
+    // NOTE: Trial account with limited credits - Gemini tier 1
     this.quotaInfo = {
       gemini: {
-        requestsPerMinute: 600,
+        requestsPerMinute: 60, // Limited for trial account (was 600)
         requestsUsedThisMinute: 0,
         lastMinuteReset: Date.now(),
-        monthlyTokens: null, // Requires API call to get
+        monthlyTokens: 100000, // Estimated trial quota
         monthlyTokensUsed: 0,
         monthResetDate: this.getMonthResetDate(),
         quotaExceeded: false,
-        lastError: null
+        lastError: null,
+        isTrial: true, // Flag for trial account
+        warningThreshold: 0.8 // Warn when 80% of quota used
       },
       openai: {
         requestsPerMinute: null, // Varies by tier
@@ -116,6 +119,32 @@ class QuotaService {
   // Check if rate limit exceeded
   isRateLimitExceeded() {
     return this.quotaInfo.gemini.requestsUsedThisMinute >= this.quotaInfo.gemini.requestsPerMinute;
+  }
+
+  // Check if approaching quota limit (trial account warning)
+  isApproachingQuotaLimit() {
+    const gemini = this.quotaInfo.gemini;
+    if (!gemini.monthlyTokens) return false;
+    const usagePercentage = gemini.monthlyTokensUsed / gemini.monthlyTokens;
+    return usagePercentage >= gemini.warningThreshold;
+  }
+
+  // Get credit warning status for trial account
+  getCreditWarning() {
+    const gemini = this.quotaInfo.gemini;
+    if (!gemini.isTrial) return null;
+    
+    const usagePercentage = (gemini.monthlyTokensUsed / gemini.monthlyTokens) * 100;
+    const remainingTokens = gemini.monthlyTokens - gemini.monthlyTokensUsed;
+    
+    return {
+      isTrial: true,
+      usagePercentage: usagePercentage.toFixed(1),
+      tokensUsed: gemini.monthlyTokensUsed,
+      tokensRemaining: remainingTokens,
+      tokenLimit: gemini.monthlyTokens,
+      warningLevel: usagePercentage >= 90 ? 'critical' : usagePercentage >= 80 ? 'warning' : 'ok'
+    };
   }
 
   // Get formatted quota status

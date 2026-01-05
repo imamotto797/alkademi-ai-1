@@ -26,6 +26,9 @@ router.post('/search', materialController.searchContent);
 // Get quota status
 router.get('/status/quota', materialController.getQuotaStatus);
 
+// Get trial account credit warning (Gemini tier 1)
+router.get('/status/credit-warning', materialController.getCreditWarning);
+
 // Get API key status
 router.get('/status/keys', materialController.getKeyStatus);
 

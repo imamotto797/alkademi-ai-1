@@ -9,14 +9,16 @@ const quotaService = require('./QuotaService');
 class AIProviderManager {
   constructor() {
     this.providers = {};
+    // Prioritize Gemini for trial account with limited credits
     this.primaryProvider = (process.env.PRIMARY_LLM_PROVIDER || 'gemini').toLowerCase();
+    this.isTrial = process.env.TRIAL_ACCOUNT === 'true' || true; // Assume trial for credit management
     
     // Initialize available providers
     this.initializeProviders();
   }
 
   initializeProviders() {
-    // Gemini
+    // Gemini - TIER 1 (Prioritized for trial account)
     const geminiKeys = (process.env.GEMINI_API_KEYS || '').split(',').map(k => k.trim()).filter(k => k);
     if (geminiKeys.length > 0) {
       this.providers.gemini = {
@@ -25,9 +27,12 @@ class AIProviderManager {
         models: ['gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.5-pro'],
         currentKeyIndex: 0,
         quota: {},
-        isAvailable: true
+        isAvailable: true,
+        tier: 'tier1',
+        priority: 1, // Highest priority
+        cacheTTL: 120 // Cache results for 2 hours (conserve credits)
       };
-      console.log(`✅ Gemini provider enabled with ${geminiKeys.length} key(s)`);
+      console.log(`✅ Gemini provider enabled (TIER 1 - Prioritized) with ${geminiKeys.length} key(s)`);
     }
 
     // OpenAI

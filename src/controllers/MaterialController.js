@@ -489,6 +489,20 @@ const getQuotaStatus = async (req, res) => {
   }
 };
 
+// Get trial account credit warning (Gemini tier 1)
+const getCreditWarning = async (req, res) => {
+  try {
+    const warning = quotaService.getCreditWarning();
+    res.status(200).json({
+      success: true,
+      creditWarning: warning
+    });
+  } catch (error) {
+    console.error('Error getting credit warning:', error);
+    res.status(500).json({ error: 'Failed to get credit warning' });
+  }
+};
+
 // Get API key status
 const getKeyStatus = (req, res) => {
   try {
@@ -603,6 +617,7 @@ module.exports = {
   regenerateMaterials,
   searchContent,
   getQuotaStatus,
+  getCreditWarning,
   getKeyStatus,
   getProviderStatus,
   upload
