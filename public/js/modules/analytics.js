@@ -91,7 +91,7 @@ class AnalyticsModule {
                 <div class="top-material-info">
                     <div class="top-material-name">${utils.DataFormatter.truncate(material.title, 50)}</div>
                     <div class="top-material-stats">
-                        👁️ ${material.view_count} views
+                        Views: ${material.view_count}
                     </div>
                 </div>
             `;

@@ -96,8 +96,8 @@ class MaterialsModule {
             <div class="material-card-header">
                 <h3>${utils.DataFormatter.truncate(material.title, 40)}</h3>
                 <div class="material-card-actions">
-                    <button class="material-card-action" title="View details">👁️</button>
-                    <button class="material-card-action" title="Delete">🗑️</button>
+                    <button class="material-card-action" title="View details">View</button>
+                    <button class="material-card-action" title="Delete">Delete</button>
                 </div>
             </div>
             <div class="material-card-body">
@@ -108,28 +108,40 @@ class MaterialsModule {
             </div>
         `;
 
-        // Event listeners
+        // Event listeners with optimized async handling
         const viewBtn = div.querySelector('.material-card-actions .material-card-action:first-child');
         const deleteBtn = div.querySelector('.material-card-actions .material-card-action:last-child');
 
         // Open generated materials in a dedicated detail page for better UX
         if (material.source_type === 'generated') {
-            viewBtn.addEventListener('click', () => {
-                window.location.href = `/html/materialDetail.html?id=${material.id}`;
+            viewBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Use async to avoid blocking UI
+                requestAnimationFrame(() => {
+                    window.location.href = `/html/materialDetail.html?id=${material.id}`;
+                });
             });
         } else {
-            viewBtn.addEventListener('click', () => this.showMaterialDetail(material));
+            viewBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                requestAnimationFrame(() => this.showMaterialDetail(material));
+            });
         }
 
-        deleteBtn.addEventListener('click', () => this.confirmDelete(material));
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            requestAnimationFrame(() => this.confirmDelete(material));
+        });
 
         // Make entire card clickable for convenience (skip clicks on action buttons)
         div.addEventListener('click', (e) => {
             if (e.target.closest('.material-card-actions')) return;
             if (material.source_type === 'generated') {
-                window.location.href = `/html/materialDetail.html?id=${material.id}`;
+                requestAnimationFrame(() => {
+                    window.location.href = `/html/materialDetail.html?id=${material.id}`;
+                });
             } else {
-                this.showMaterialDetail(material);
+                requestAnimationFrame(() => this.showMaterialDetail(material));
             }
         });
 
