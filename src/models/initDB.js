@@ -1,10 +1,23 @@
 const { Pool } = require('pg');
 
-const pool = new Pool({
-  connectionString: process.env.NEON_DB_URL,
-});
+// Make database connection optional
+let pool = null;
+
+if (process.env.NEON_DB_URL) {
+  pool = new Pool({
+    connectionString: process.env.NEON_DB_URL,
+  });
+} else {
+  console.warn('⚠️ NEON_DB_URL not configured. Database features will be disabled.');
+}
 
 const initDB = async () => {
+  // If no database connection, skip initialization
+  if (!pool) {
+    console.warn('⚠️ Skipping database initialization - no database URL provided');
+    return;
+  }
+  
   try {
     // Enable pgvector extension
     await pool.query('CREATE EXTENSION IF NOT EXISTS vector');

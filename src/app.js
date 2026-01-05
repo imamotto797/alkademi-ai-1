@@ -48,16 +48,31 @@ let server;
 
 const startServer = async () => {
   try {
-    await initDB();
+    // Try to initialize database, but continue if it fails
+    try {
+      await initDB();
+      console.log('✅ Database initialized successfully');
+    } catch (dbError) {
+      console.warn('⚠️ Database initialization failed, continuing without DB:', dbError.message);
+    }
     
     const PORT = process.env.PORT || 3000;
     server = app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Press Ctrl+C to stop the server`);
+      console.log(`✅ Server running on port ${PORT}`);
+      console.log(`📍 URL: http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
+    console.error('❌ Failed to start server:', error);
+    // Don't exit immediately, try to start with limited functionality
+    const PORT = process.env.PORT || 3000;
+    try {
+      server = app.listen(PORT, () => {
+        console.log(`⚠️ Server started on port ${PORT} (limited functionality)`);
+      });
+    } catch (listenError) {
+      console.error('Fatal error:', listenError);
+      process.exit(1);
+    }
   }
 };
 
