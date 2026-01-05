@@ -46,8 +46,14 @@ app.get('/', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  console.error('❌ ERROR:', err.message);
+  console.error('Stack:', err.stack);
+  console.error('Request:', { method: req.method, path: req.path, body: req.body });
+  
+  res.status(err.status || 500).json({ 
+    error: err.message || 'Something went wrong!',
+    ...(process.env.NODE_ENV === 'development' && { details: err.stack })
+  });
 });
 
 // Initialize database on startup

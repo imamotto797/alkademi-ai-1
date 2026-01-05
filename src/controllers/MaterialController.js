@@ -9,18 +9,21 @@ const path = require('path');
 const fs = require('fs');
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (_req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
+// Use memory storage for Vercel, disk storage for local development
+const storage = process.env.VERCEL 
+  ? multer.memoryStorage()  // Use RAM on Vercel (serverless)
+  : multer.diskStorage({     // Use disk on local
+      destination: (_req, _file, cb) => {
+        const uploadDir = path.join(__dirname, '../../uploads');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+      },
+      filename: (_req, file, cb) => {
+        cb(null, Date.now() + '-' + file.originalname);
+      }
+    });
 
 const upload = multer({ storage });
 
@@ -113,8 +116,16 @@ const uploadCombinedSources = async (req, res) => {
     // Parse and combine all files
     for (const file of req.files) {
       try {
-        console.log(`Parsing file: ${file.originalname} (path: ${file.path})`);
-        const sourceText = await fileParser.parseFile(file.path);
+        console.log(`Parsing file: ${file.originalname}`);
+        
+        // Handle both disk storage (file.path) and memory storage (file.buffer)
+        const fileInput = file.buffer || file.path;
+        if (!fileInput) {
+          throw new Error('No file data available');
+        }
+        
+        // Pass buffer or path along with originalname for proper parsing
+        const sourceText = await fileParser.parseFile(fileInput, file.originalname);
         console.log(`✓ Successfully parsed ${file.originalname}, extracted ${sourceText.length} characters`);
         fileNames.push(file.originalname);
         
@@ -125,22 +136,29 @@ const uploadCombinedSources = async (req, res) => {
           combinedText = sourceText; // Single file, no header needed
         }
         
-        // Clean up the uploaded file
-        try {
-          fs.unlinkSync(file.path);
-        } catch (unlinkError) {
-          console.warn(`Could not delete temp file ${file.path}:`, unlinkError.message);
+        // Clean up the uploaded file (only needed for disk storage)
+        if (file.path) {
+          try {
+            if (fs.existsSync(file.path)) {
+              fs.unlinkSync(file.path);
+              console.log(`✓ Cleaned up temp file: ${file.path}`);
+            }
+          } catch (unlinkError) {
+            console.warn(`Could not delete temp file ${file.path}:`, unlinkError.message);
+          }
         }
       } catch (error) {
         errors.push({ file: file.originalname, error: error.message });
-        console.error(`Error processing file ${file.originalname}:`, error);
-        // Clean up on error
-        try {
-          if (fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
+        console.error(`Error processing file ${file.originalname}:`, error.message);
+        // Clean up on error (only for disk storage)
+        if (file.path) {
+          try {
+            if (fs.existsSync(file.path)) {
+              fs.unlinkSync(file.path);
+            }
+          } catch (unlinkError) {
+            console.warn(`Could not clean up temp file:`, unlinkError.message);
           }
-        } catch (unlinkError) {
-          console.warn(`Could not clean up temp file:`, unlinkError.message);
         }
       }
     }
@@ -220,8 +238,9 @@ const uploadCombinedSources = async (req, res) => {
 // Helper function to process a single file
 const processFile = async (file, customTitle = null) => {
   try {
-    // Parse the file to extract text
-    const sourceText = await fileParser.parseFile(file.path);
+    // Parse the file to extract text (handle both buffer and path)
+    const fileInput = file.buffer || file.path;
+    const sourceText = await fileParser.parseFile(fileInput, file.originalname);
     
     // Analyze the source text
     const keyConcepts = nlpService.extractKeyConcepts(sourceText);
@@ -246,8 +265,14 @@ const processFile = async (file, customTitle = null) => {
       console.warn('Skipping embeddings due to error:', embeddingError.message);
     }
     
-    // Clean up the uploaded file
-    fs.unlinkSync(file.path);
+    // Clean up the uploaded file (only for disk storage)
+    if (file.path) {
+      try {
+        fs.unlinkSync(file.path);
+      } catch (unlinkError) {
+        console.warn('Could not clean up temp file:', unlinkError.message);
+      }
+    }
     
     return {
       ...material,
@@ -255,9 +280,13 @@ const processFile = async (file, customTitle = null) => {
       complexity
     };
   } catch (error) {
-    // Clean up the file if processing fails
-    if (fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
+    // Clean up the file if processing fails (only for disk storage)
+    if (file.path && fs.existsSync(file.path)) {
+      try {
+        fs.unlinkSync(file.path);
+      } catch (unlinkError) {
+        console.warn('Could not clean up temp file on error:', unlinkError.message);
+      }
     }
     throw error;
   }
