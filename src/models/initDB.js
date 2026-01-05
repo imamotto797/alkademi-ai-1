@@ -3,6 +3,9 @@ const { Pool } = require('pg');
 // Make database connection optional
 let pool = null;
 
+console.log('🔍 Checking NEON_DB_URL:', process.env.NEON_DB_URL ? '✅ Found' : '❌ Missing');
+console.log('🔍 All env vars:', Object.keys(process.env).filter(k => k.includes('DB') || k.includes('NEON')));
+
 if (process.env.NEON_DB_URL) {
   pool = new Pool({
     connectionString: process.env.NEON_DB_URL,
