@@ -124,13 +124,21 @@ const uploadCombinedSources = async (req, res) => {
         }
         
         // Clean up the uploaded file
-        fs.unlinkSync(file.path);
+        try {
+          fs.unlinkSync(file.path);
+        } catch (unlinkError) {
+          console.warn(`Could not delete temp file ${file.path}:`, unlinkError.message);
+        }
       } catch (error) {
         errors.push({ file: file.originalname, error: error.message });
         console.error(`Error processing file ${file.originalname}:`, error);
         // Clean up on error
-        if (fs.existsSync(file.path)) {
-          fs.unlinkSync(file.path);
+        try {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        } catch (unlinkError) {
+          console.warn(`Could not clean up temp file:`, unlinkError.message);
         }
       }
     }
@@ -139,9 +147,15 @@ const uploadCombinedSources = async (req, res) => {
       return res.status(400).json({ error: 'Failed to extract content from any files' });
     }
 
-    // Analyze the combined text
-    const keyConcepts = nlpService.extractKeyConcepts(combinedText);
-    const complexity = nlpService.analyzeComplexity(combinedText);
+    // Analyze the combined text (gracefully skip if services fail)
+    let keyConcepts = [];
+    let complexity = 'medium';
+    try {
+      keyConcepts = nlpService.extractKeyConcepts(combinedText);
+      complexity = nlpService.analyzeComplexity(combinedText);
+    } catch (nlpError) {
+      console.warn('NLP analysis skipped:', nlpError.message);
+    }
     
     // Determine source type
     const sourceType = req.files.length > 1 ? 'combined' : path.extname(req.files[0].originalname);

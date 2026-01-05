@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const AnalyticsController = require('../controllers/AnalyticsController');
 
+// Track generic events
+router.post('/track-event', AnalyticsController.trackEvent || ((req, res) => res.json({ success: true })));
+
 // Log material access
 router.post('/log-access', AnalyticsController.logMaterialAccess);
 
