@@ -11,9 +11,5 @@
       "src": "/(.*)",
       "dest": "server.js"
     }
-  ],
-  "env": {
-    "NEON_DB_URL": "@neon_db_url",
-    "OPENAI_API_KEY": "@openai_api_key"
-  }
+  ]
 }
