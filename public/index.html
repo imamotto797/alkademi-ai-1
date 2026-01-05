@@ -253,17 +253,18 @@
                 const quotaDetails = document.getElementById('quotaDetails');
                 if (!quotaDetails) return;
 
-                let html = '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 8px;">';
+                let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
 
                 Object.entries(quota).forEach(([provider, status]) => {
                     const used = status.used || 0;
                     const limit = status.limit || 0;
                     const percentage = limit > 0 ? (used / limit) * 100 : 0;
                     const color = percentage > 80 ? '#f44336' : percentage > 50 ? '#ff9800' : '#4caf50';
+                    const icon = percentage > 80 ? '⚠️' : percentage > 50 ? '⏱️' : '✅';
 
                     html += `
-                        <div style="padding: 8px; background: ${color}20; border-left: 3px solid ${color}; border-radius: 4px;">
-                            <strong style="text-transform: capitalize;">${provider}</strong><br>
+                        <div style="padding: 6px 10px; background: ${color}15; border-left: 3px solid ${color}; border-radius: 4px; font-size: 11px;">
+                            <strong style="text-transform: capitalize;">${icon} ${provider}</strong><br>
                             <small>${used}/${limit} (${Math.round(percentage)}%)</small>
                         </div>
                     `;

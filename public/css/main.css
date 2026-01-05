@@ -66,6 +66,7 @@ header p {
 
 .quota-status {
     font-size: 14px;
+    display: none;
 }
 
 .quota-status span {
@@ -75,8 +76,14 @@ header p {
 }
 
 #quotaDetails {
-    font-size: 12px !important;
-    opacity: 0.9;
+    font-size: 11px !important;
+    opacity: 0.85;
+    margin-top: 10px;
+}
+
+/* Show quota status on hover */
+.header-quota:hover .quota-status {
+    display: block;
 }
 
 .tabs {
