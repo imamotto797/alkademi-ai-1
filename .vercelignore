@@ -1,0 +1,12 @@
+node_modules
+.git
+.env.local
+.env.development
+.env.test
+.next
+npm-debug.log
+.DS_Store
+*.md
+scripts
+uploads
+public/upload-test.html
