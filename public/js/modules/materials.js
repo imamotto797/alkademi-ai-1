@@ -32,9 +32,33 @@ class MaterialsModule {
         // Delete button
         document.getElementById('deleteMaterialBtn').addEventListener('click', () => this.deleteMaterial());
 
+        // Event delegation for material card actions (replaces per-card listeners for better perf)
+        container.addEventListener('click', (e) => this.handleCardAction(e), true);
+
         // Load materials
         this.loadMaterials();
         console.log('[MaterialsModule] Initialization complete');
+    }
+
+    handleCardAction(e) {
+        const action = e.target.dataset?.action;
+        if (!action) return;
+
+        e.stopPropagation();
+        const card = e.target.closest('.material-card');
+        if (!card?._material) return;
+
+        if (action === 'view') {
+            const material = card._material;
+            if (material.source_type === 'generated') {
+                window.location.href = `/html/materialDetail.html?id=${material.id}`;
+            } else {
+                this.showMaterialDetail(material);
+            }
+        } else if (action === 'delete') {
+            const material = card._material;
+            this.confirmDelete(material);
+        }
     }
 
     async loadMaterials() {
@@ -92,12 +116,15 @@ class MaterialsModule {
         const uploadDate = utils.DateFormatter.relative(material.created_at);
         const description = material.source_type === 'generated' ? 'Generated Material' : 'Source Material';
 
+        div.dataset.materialId = material.id;
+        div.dataset.sourceType = material.source_type;
+        
         div.innerHTML = `
             <div class="material-card-header">
                 <h3>${utils.DataFormatter.truncate(material.title, 40)}</h3>
                 <div class="material-card-actions">
-                    <button class="material-card-action" title="View details">View</button>
-                    <button class="material-card-action" title="Delete">Delete</button>
+                    <button class="btn-view" data-action="view" title="View details">View</button>
+                    <button class="btn-delete" data-action="delete" title="Delete">Delete</button>
                 </div>
             </div>
             <div class="material-card-body">
@@ -108,42 +135,8 @@ class MaterialsModule {
             </div>
         `;
 
-        // Event listeners with optimized async handling
-        const viewBtn = div.querySelector('.material-card-actions .material-card-action:first-child');
-        const deleteBtn = div.querySelector('.material-card-actions .material-card-action:last-child');
-
-        // Open generated materials in a dedicated detail page for better UX
-        if (material.source_type === 'generated') {
-            viewBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Use async to avoid blocking UI
-                requestAnimationFrame(() => {
-                    window.location.href = `/html/materialDetail.html?id=${material.id}`;
-                });
-            });
-        } else {
-            viewBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                requestAnimationFrame(() => this.showMaterialDetail(material));
-            });
-        }
-
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            requestAnimationFrame(() => this.confirmDelete(material));
-        });
-
-        // Make entire card clickable for convenience (skip clicks on action buttons)
-        div.addEventListener('click', (e) => {
-            if (e.target.closest('.material-card-actions')) return;
-            if (material.source_type === 'generated') {
-                requestAnimationFrame(() => {
-                    window.location.href = `/html/materialDetail.html?id=${material.id}`;
-                });
-            } else {
-                requestAnimationFrame(() => this.showMaterialDetail(material));
-            }
-        });
+        // Store material reference for event delegation (no inline listeners = better perf)
+        div._material = material;
 
         return div;
     }

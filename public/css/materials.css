@@ -78,39 +78,39 @@
     -webkit-box-orient: vertical;
 }
 
-.material-actions {
+.material-card-actions {
     display: flex;
     gap: 8px;
-    padding-top: 10px;
-    border-top: 1px solid #eee;
 }
 
-.material-action-btn {
+.btn-view,
+.btn-delete {
     flex: 1;
-    padding: 8px 12px;
+    padding: 6px 10px;
     font-size: 12px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: background-color 0.15s ease;
+    font-weight: 500;
 }
 
-.material-action-btn.view {
+.btn-view {
     background: #667eea;
     color: white;
 }
 
-.material-action-btn.view:hover {
+.btn-view:hover {
     background: #5568d3;
 }
 
-.material-action-btn.delete {
-    background: #f44336;
+.btn-delete {
+    background: #dc3545;
     color: white;
 }
 
-.material-action-btn.delete:hover {
-    background: #da190b;
+.btn-delete:hover {
+    background: #c82333;
 }
 
 .material-action-btn.download {
