@@ -253,9 +253,18 @@
                 const quotaDetails = document.getElementById('quotaDetails');
                 if (!quotaDetails) return;
 
-                let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+                // Check if quota has any data
+                const hasData = quota && Object.keys(quota).length > 0;
+                if (!hasData) {
+                    quotaDetails.innerHTML = '<small>Quota data unavailable</small>';
+                    return;
+                }
+
+                let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
 
                 Object.entries(quota).forEach(([provider, status]) => {
+                    if (!status || typeof status !== 'object') return;
+                    
                     const used = status.used || 0;
                     const limit = status.limit || 0;
                     const percentage = limit > 0 ? (used / limit) * 100 : 0;
@@ -263,7 +272,7 @@
                     const icon = percentage > 80 ? '⚠️' : percentage > 50 ? '⏱️' : '✅';
 
                     html += `
-                        <div style="padding: 6px 10px; background: ${color}15; border-left: 3px solid ${color}; border-radius: 4px; font-size: 11px;">
+                        <div style="padding: 5px 8px; background: ${color}12; border-left: 2px solid ${color}; border-radius: 3px; font-size: 10px; line-height: 1.3;">
                             <strong style="text-transform: capitalize;">${icon} ${provider}</strong><br>
                             <small>${used}/${limit} (${Math.round(percentage)}%)</small>
                         </div>

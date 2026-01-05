@@ -65,25 +65,24 @@ header p {
 }
 
 .quota-status {
-    font-size: 14px;
-    display: none;
+    font-size: 12px;
+    background: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .quota-status span {
     font-weight: 600;
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
+    color: #333;
 }
 
 #quotaDetails {
     font-size: 11px !important;
-    opacity: 0.85;
-    margin-top: 10px;
-}
-
-/* Show quota status on hover */
-.header-quota:hover .quota-status {
-    display: block;
+    opacity: 0.9;
+    margin-top: 6px;
 }
 
 .tabs {
