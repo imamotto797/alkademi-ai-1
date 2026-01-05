@@ -92,8 +92,30 @@
         <div id="generationError" class="error-box" style="display: none;"></div>
         
         <div id="generationLoading" class="loading-container" style="display: none;">
-            <div class="spinner"></div>
-            <p>Generating with <span id="loadingProvider">selected provider</span>...</p>
+            <div class="loading-content">
+                <div class="loading-spinner">
+                    <div class="spinner-ring"></div>
+                    <div class="spinner-ring"></div>
+                    <div class="spinner-ring"></div>
+                </div>
+                <h3 class="loading-title">🤖 Generating Content</h3>
+                <p class="loading-provider">Using <span id="loadingProvider">selected provider</span></p>
+                <div class="loading-status">
+                    <div class="status-step active">
+                        <span class="step-icon">📤</span>
+                        <span class="step-text">Sending request...</span>
+                    </div>
+                    <div class="status-step">
+                        <span class="step-icon">🧠</span>
+                        <span class="step-text">AI is thinking...</span>
+                    </div>
+                    <div class="status-step">
+                        <span class="step-icon">✨</span>
+                        <span class="step-text">Formatting results...</span>
+                    </div>
+                </div>
+                <p class="loading-hint">This may take 10-30 seconds depending on complexity</p>
+            </div>
         </div>
     </div>
 </div>

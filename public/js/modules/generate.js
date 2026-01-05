@@ -132,6 +132,9 @@ class GenerateModule {
             this.providerDetails[provider]?.name || provider;
         document.getElementById('generateBtn').disabled = true;
 
+        // Animate loading steps
+        this.animateLoadingSteps();
+
         try {
             // Map education level to target audience description
             const audienceMap = {
@@ -166,6 +169,11 @@ class GenerateModule {
             utils.DOM.show(document.getElementById('generationError'));
             utils.Notification.error(errorMsg);
         } finally {
+            // Clear loading animation interval
+            if (this.loadingInterval) {
+                clearInterval(this.loadingInterval);
+                this.loadingInterval = null;
+            }
             utils.DOM.hide(loading);
             document.getElementById('generateBtn').disabled = false;
         }
@@ -268,6 +276,29 @@ class GenerateModule {
         URL.revokeObjectURL(url);
 
         utils.Notification.success('File downloaded!');
+    }
+
+    animateLoadingSteps() {
+        const steps = document.querySelectorAll('.status-step');
+        steps.forEach((step, index) => {
+            step.classList.remove('active');
+        });
+        
+        let currentStep = 0;
+        const stepInterval = setInterval(() => {
+            if (currentStep > 0) {
+                steps[currentStep - 1].classList.remove('active');
+            }
+            if (currentStep < steps.length) {
+                steps[currentStep].classList.add('active');
+                currentStep++;
+            } else {
+                currentStep = 0; // Loop back
+            }
+        }, 2000);
+        
+        // Store interval ID to clear it later
+        this.loadingInterval = stepInterval;
     }
 
     clearForm() {

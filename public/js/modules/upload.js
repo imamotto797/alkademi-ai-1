@@ -189,6 +189,13 @@ class UploadModule {
                             setTimeout(() => {
                                 utils.DOM.hide(progressContainer);
                                 progressFill.style.width = '0%';
+                                
+                                // Switch to generate tab after successful upload
+                                const generateTab = document.querySelector('[data-tab="generate"]');
+                                if (generateTab) {
+                                    console.log('[UploadModule] Switching to generate tab');
+                                    generateTab.click();
+                                }
                             }, 1000);
 
                             // Reload materials if tabs exist
