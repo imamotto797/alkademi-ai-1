@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const materialRoutes = require('./routes/materialRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const { initDB } = require('./models/initDB');
@@ -12,8 +13,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from public directory
-app.use(express.static('public'));
+// Serve static files from public directory with correct path
+const publicPath = path.join(__dirname, '../public');
+app.use(express.static(publicPath));
 
 // Routes
 app.use('/api/materials', materialRoutes);
@@ -35,6 +37,11 @@ app.get('/api', (req, res) => {
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Serve index.html for root path
+app.get('/', (req, res) => {
+  res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 // Error handling middleware
