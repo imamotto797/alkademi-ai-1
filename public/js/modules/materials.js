@@ -71,7 +71,16 @@ class MaterialsModule {
         utils.DOM.hide(noMaterials);
 
         try {
-            const response = await api.getMaterials();
+            // Add timeout to prevent hanging forever
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Request timeout')), 10000)
+            );
+
+            const response = await Promise.race([
+                api.getMaterials(),
+                timeoutPromise
+            ]);
+            
             console.log('[MaterialsModule] API response:', response);
             
             // Handle response - may be { success, materials } or { materials }
@@ -93,7 +102,12 @@ class MaterialsModule {
             }
         } catch (error) {
             console.error('[MaterialsModule] Failed to load materials:', error);
-            utils.Notification.error('Failed to load materials: ' + error.message);
+            // Show empty state with helpful message
+            utils.DOM.hide(container);
+            utils.DOM.show(noMaterials);
+            if (utils.Notification?.error) {
+                utils.Notification.error('Failed to load materials: ' + error.message);
+            }
         } finally {
             utils.DOM.hide(loading);
         }
