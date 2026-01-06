@@ -42,6 +42,8 @@ const uploadSource = async (req, res) => {
         id: material.id,
         title: material.title,
         sourceType: material.source_type,
+        sourceFiles: material.source_files || [req.file.originalname],
+        fileName: req.file.originalname,
         keyConcepts: material.keyConcepts,
         complexity: material.complexity
       }
@@ -70,6 +72,8 @@ const uploadMultipleSources = async (req, res) => {
           id: material.id,
           title: material.title,
           sourceType: material.source_type,
+          fileName: file.originalname,
+          sourceFiles: material.source_files || [file.originalname],
           keyConcepts: material.keyConcepts,
           complexity: material.complexity
         });
@@ -187,7 +191,11 @@ const uploadCombinedSources = async (req, res) => {
       material = await materialModel.create(
         title,
         combinedText,
-        sourceType
+        sourceType,
+        {
+          sourceFilename: req.files.length === 1 ? req.files[0].originalname : null,
+          sourceFiles: fileNames
+        }
       );
       console.log(`✓ Created material ID: ${material.id}, Title: "${material.title}"`);
     } catch (dbError) {
@@ -250,7 +258,11 @@ const processFile = async (file, customTitle = null) => {
     const material = await materialModel.create(
       customTitle || path.basename(file.originalname, path.extname(file.originalname)),
       sourceText,
-      path.extname(file.originalname)
+      path.extname(file.originalname),
+      {
+        sourceFilename: file.originalname,
+        sourceFiles: [file.originalname]
+      }
     );
     
     // Chunk the text for embedding (RAG pipeline - always enabled after NLP)
@@ -303,6 +315,9 @@ const generateMaterials = async (req, res) => {
     if (!material) {
       return res.status(404).json({ error: 'Material not found' });
     }
+
+    const sourceFiles = material.source_files || (material.source_filename ? [material.source_filename] : []);
+    const sourceFilename = material.source_filename || (sourceFiles.length > 0 ? sourceFiles[0] : null);
     
     // Perform semantic retrieval from VectorDB if focus areas specified
     let relevantContext = [];
@@ -328,6 +343,7 @@ const generateMaterials = async (req, res) => {
     // First, delete any existing generated materials from this source
     // This prevents duplicate "Teaching Materials" from piling up
     try {
+      await materialModel.deleteByParentId(material.id);
       const existingGenerated = await materialModel.findByTitle(`${material.title} - Teaching Materials`);
       if (existingGenerated) {
         await materialModel.delete(existingGenerated.id);
@@ -341,7 +357,12 @@ const generateMaterials = async (req, res) => {
     const newMaterial = await materialModel.create(
       `${material.title} - Teaching Materials`,
       generatedMaterials,
-      'generated'
+      'generated',
+      {
+        parentMaterialId: material.id,
+        sourceFilename,
+        sourceFiles
+      }
     );
     
     res.status(201).json({
@@ -350,7 +371,9 @@ const generateMaterials = async (req, res) => {
         id: newMaterial.id,
         title: newMaterial.title,
         content: newMaterial.content,
-        sourceType: newMaterial.source_type
+        sourceType: newMaterial.source_type,
+        sourceFiles: newMaterial.source_files || sourceFiles,
+        parentMaterialId: newMaterial.parent_material_id
       }
     });
   } catch (error) {
@@ -442,6 +465,8 @@ const deleteMaterial = async (req, res) => {
     // If this is a source material, also delete any generated materials from it
     if (material.source_type !== 'generated') {
       try {
+        await materialModel.deleteByParentId(id);
+
         const generatedTitle = `${material.title} - Teaching Materials`;
         const generatedMaterial = await materialModel.findByTitle(generatedTitle);
         if (generatedMaterial) {
@@ -618,6 +643,8 @@ const regenerateMaterials = async (req, res) => {
     }
     
     console.log(`Regenerating teaching materials for source: ${material.title}`);
+    const sourceFiles = material.source_files || (material.source_filename ? [material.source_filename] : []);
+    const sourceFilename = material.source_filename || (sourceFiles.length > 0 ? sourceFiles[0] : null);
     
     // Perform semantic retrieval from VectorDB if focus areas specified
     let relevantContext = [];
@@ -635,6 +662,7 @@ const regenerateMaterials = async (req, res) => {
     
     // Delete the existing generated material
     try {
+      await materialModel.deleteByParentId(material.id);
       const existingGenerated = await materialModel.findByTitle(`${material.title} - Teaching Materials`);
       if (existingGenerated) {
         await materialModel.delete(existingGenerated.id);
@@ -655,7 +683,12 @@ const regenerateMaterials = async (req, res) => {
     const newMaterial = await materialModel.create(
       `${material.title} - Teaching Materials`,
       generatedMaterials,
-      'generated'
+      'generated',
+      {
+        parentMaterialId: material.id,
+        sourceFilename,
+        sourceFiles
+      }
     );
     
     res.status(201).json({
@@ -665,7 +698,9 @@ const regenerateMaterials = async (req, res) => {
         id: newMaterial.id,
         title: newMaterial.title,
         content: newMaterial.content,
-        sourceType: newMaterial.source_type
+        sourceType: newMaterial.source_type,
+        sourceFiles: newMaterial.source_files || sourceFiles,
+        parentMaterialId: newMaterial.parent_material_id
       }
     });
   } catch (error) {

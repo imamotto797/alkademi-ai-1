@@ -32,6 +32,9 @@ const initDB = async () => {
         title VARCHAR(255) NOT NULL,
         content TEXT NOT NULL,
         source_type VARCHAR(50),
+        source_filename TEXT,
+        source_files JSONB,
+        parent_material_id INTEGER,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         is_deleted BOOLEAN DEFAULT FALSE,
@@ -53,6 +56,31 @@ const initDB = async () => {
       // Column already exists, skip
       if (!err.message.includes('already exists')) throw err;
     }
+
+    // Add source metadata columns when upgrading existing tables
+    try {
+      await pool.query(`ALTER TABLE materials ADD COLUMN source_filename TEXT`);
+    } catch (err) {
+      if (!err.message.includes('already exists')) throw err;
+    }
+
+    try {
+      await pool.query(`ALTER TABLE materials ADD COLUMN source_files JSONB`);
+    } catch (err) {
+      if (!err.message.includes('already exists')) throw err;
+    }
+
+    try {
+      await pool.query(`ALTER TABLE materials ADD COLUMN parent_material_id INTEGER`);
+    } catch (err) {
+      if (!err.message.includes('already exists')) throw err;
+    }
+
+    try {
+      await pool.query(`ALTER TABLE materials ADD CONSTRAINT materials_parent_fk FOREIGN KEY (parent_material_id) REFERENCES materials(id) ON DELETE SET NULL`);
+    } catch (err) {
+      if (!err.message.includes('already exists')) throw err;
+    }
     
     // Add index on creation date for sorting
     await pool.query(`
@@ -65,6 +93,12 @@ const initDB = async () => {
     await pool.query(`
       CREATE INDEX IF NOT EXISTS materials_title_idx 
       ON materials(title)
+      WHERE is_deleted = FALSE
+    `);
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS materials_parent_material_id_idx
+      ON materials(parent_material_id)
       WHERE is_deleted = FALSE
     `);
     

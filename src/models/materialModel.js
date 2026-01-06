@@ -2,11 +2,17 @@ const { pool } = require('./initDB');
 
 class MaterialModel {
   // Create a new material
-  async create(title, content, sourceType) {
+  async create(title, content, sourceType, metadata = {}) {
+    const {
+      sourceFilename = null,
+      sourceFiles = null,
+      parentMaterialId = null
+    } = metadata;
+
     try {
       const result = await pool.query(
-        'INSERT INTO materials (title, content, source_type) VALUES ($1, $2, $3) RETURNING *',
-        [title, content, sourceType]
+        'INSERT INTO materials (title, content, source_type, source_filename, source_files, parent_material_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [title, content, sourceType, sourceFilename, sourceFiles, parentMaterialId]
       );
       return result.rows[0];
     } catch (error) {
@@ -69,6 +75,31 @@ class MaterialModel {
       return result.rows[0] || null;
     } catch (error) {
       console.error('Error finding material by title:', error);
+      throw error;
+    }
+  }
+
+  // Find generated materials by their parent source material
+  async findByParentId(parentMaterialId) {
+    try {
+      const result = await pool.query(
+        'SELECT * FROM materials WHERE parent_material_id = $1 ORDER BY created_at DESC',
+        [parentMaterialId]
+      );
+      return result.rows;
+    } catch (error) {
+      console.error('Error finding materials by parent ID:', error);
+      throw error;
+    }
+  }
+
+  // Delete all materials linked to a parent source (used to drop generated modules)
+  async deleteByParentId(parentMaterialId) {
+    try {
+      await pool.query('DELETE FROM materials WHERE parent_material_id = $1', [parentMaterialId]);
+      return true;
+    } catch (error) {
+      console.error('Error deleting materials by parent ID:', error);
       throw error;
     }
   }

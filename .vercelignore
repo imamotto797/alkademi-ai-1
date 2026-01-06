@@ -10,3 +10,5 @@ npm-debug.log
 scripts
 uploads
 public/upload-test.html
+frontend
+nuxt-app
