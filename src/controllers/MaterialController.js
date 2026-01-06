@@ -8,6 +8,76 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+// Ensure a unique title by appending version suffix when needed
+const ensureUniqueTitle = async (baseTitle) => {
+  try {
+    const existing = await materialModel.findByTitle(baseTitle);
+    if (!existing) return baseTitle;
+    let idx = 2;
+    while (true) {
+      const candidate = `${baseTitle} (v${idx})`;
+      const hit = await materialModel.findByTitle(candidate);
+      if (!hit) return candidate;
+      idx++;
+    }
+  } catch (_e) {
+    // On error, fall back to timestamped title to avoid collision
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    return `${baseTitle} (${stamp})`;
+  }
+};
+
+// Map UI generationType to human-friendly display label
+const getDisplayType = (t) => {
+  const map = {
+    learning_materials: 'Learning Materials',
+    learning_planner: 'Learning Planner',
+    questions: 'Questions',
+    quiz: 'Quiz'
+  };
+  if (!t) return 'Teaching Materials';
+  const key = String(t).toLowerCase();
+  return map[key] || t; // If already human-readable, return as-is
+};
+
+// Map UI style to human-friendly label
+const getStyleLabel = (s) => {
+  const map = {
+    academic: 'Academic',
+    formal: 'Formal',
+    casual: 'Casual',
+    storytelling: 'Storytelling'
+  };
+  if (!s) return 'Academic';
+  const key = String(s).toLowerCase();
+  return map[key] || s;
+};
+
+// Map UI education level to human-friendly label
+const getLevelLabel = (lvl, targetAudience) => {
+  const map = {
+    sd: 'Elementary',
+    smp: 'Junior High',
+    sma: 'Senior High',
+    undergraduate: 'Undergraduate',
+    graduate: 'Graduate',
+    professional: 'Professional'
+  };
+  if (lvl) {
+    const key = String(lvl).toLowerCase();
+    return map[key] || lvl;
+  }
+  // Fallback: infer from targetAudience text if provided
+  const ta = String(targetAudience || '').toLowerCase();
+  if (ta.includes('elementary')) return 'Elementary';
+  if (ta.includes('junior')) return 'Junior High';
+  if (ta.includes('senior')) return 'Senior High';
+  if (ta.includes('undergraduate')) return 'Undergraduate';
+  if (ta.includes('graduate')) return 'Graduate';
+  if (ta.includes('professional')) return 'Professional';
+  return 'General';
+};
+
 // Configure multer for file uploads
 // Use memory storage for Vercel, disk storage for local development
 const storage = process.env.VERCEL 
@@ -308,7 +378,7 @@ const processFile = async (file, customTitle = null) => {
 const generateMaterials = async (req, res) => {
   try {
     const { materialId } = req.params;
-    const options = req.body;
+    const options = req.body || {};
     
     // Get the source material
     const material = await materialModel.getById(materialId);
@@ -342,26 +412,43 @@ const generateMaterials = async (req, res) => {
     
     // First, delete any existing generated materials from this source
     // This prevents duplicate "Teaching Materials" from piling up
-    try {
-      await materialModel.deleteByParentId(material.id);
-      const existingGenerated = await materialModel.findByTitle(`${material.title} - Teaching Materials`);
-      if (existingGenerated) {
-        await materialModel.delete(existingGenerated.id);
-        console.log(`Replaced previous generated material (ID: ${existingGenerated.id})`);
+    if (options.replaceExisting === true) {
+      try {
+        await materialModel.deleteByParentId(material.id);
+        const displayType = getDisplayType(options.generationType);
+        const prevTitle = `${material.title} - ${displayType}`;
+        const existingGenerated = await materialModel.findByTitle(prevTitle);
+        if (existingGenerated) {
+          await materialModel.delete(existingGenerated.id);
+          console.log(`Replaced previous generated material (ID: ${existingGenerated.id})`);
+        }
+      } catch (e) {
+        console.warn('Could not check for existing generated material:', e.message);
       }
-    } catch (e) {
-      console.warn('Could not check for existing generated material:', e.message);
     }
     
     // Create a new material record for the generated content
+    const displayType = getDisplayType(options.generationType);
+    const styleLabel = getStyleLabel(options.style);
+    const levelLabel = getLevelLabel(options.level, options.targetAudience);
+    const baseTitle = options.title && options.title.trim() !== ''
+      ? options.title.trim()
+      : `${material.title} - ${displayType} - ${styleLabel} - ${levelLabel}`;
+    const generatedTitle = await ensureUniqueTitle(baseTitle);
     const newMaterial = await materialModel.create(
-      `${material.title} - Teaching Materials`,
+      generatedTitle,
       generatedMaterials,
       'generated',
       {
         parentMaterialId: material.id,
         sourceFilename,
-        sourceFiles
+        sourceFiles,
+        generationType: options.generationType || 'learning_materials',
+        generationTypeLabel: displayType,
+        style: options.style || 'academic',
+        styleLabel,
+        level: options.level || null,
+        levelLabel
       }
     );
     
@@ -373,7 +460,13 @@ const generateMaterials = async (req, res) => {
         content: newMaterial.content,
         sourceType: newMaterial.source_type,
         sourceFiles: newMaterial.source_files || sourceFiles,
-        parentMaterialId: newMaterial.parent_material_id
+        parentMaterialId: newMaterial.parent_material_id,
+        generationType: options.generationType || 'learning_materials',
+        generationTypeLabel: displayType,
+        style: options.style || 'academic',
+        styleLabel,
+        level: options.level || null,
+        levelLabel
       }
     });
   } catch (error) {
@@ -394,13 +487,15 @@ const getAllMaterials = async (req, res) => {
       });
     }
 
+    // Load materials from database
     const materials = await materialModel.getAll();
+
     res.status(200).json({
       success: true,
       materials: materials || []
     });
   } catch (error) {
-    console.error('Error getting materials:', error);
+    console.warn('getAllMaterials failed:', error.message);
     // Return empty array instead of 500 error for better UX
     res.status(200).json({
       success: true,
@@ -661,15 +756,19 @@ const regenerateMaterials = async (req, res) => {
     }
     
     // Delete the existing generated material
-    try {
-      await materialModel.deleteByParentId(material.id);
-      const existingGenerated = await materialModel.findByTitle(`${material.title} - Teaching Materials`);
-      if (existingGenerated) {
-        await materialModel.delete(existingGenerated.id);
-        console.log(`Deleted previous generated material (ID: ${existingGenerated.id})`);
+    if (options.replaceExisting === true) {
+      try {
+        await materialModel.deleteByParentId(material.id);
+        const displayType = getDisplayType(options.generationType);
+        const prevTitle = `${material.title} - ${displayType}`;
+        const existingGenerated = await materialModel.findByTitle(prevTitle);
+        if (existingGenerated) {
+          await materialModel.delete(existingGenerated.id);
+          console.log(`Deleted previous generated material (ID: ${existingGenerated.id})`);
+        }
+      } catch (e) {
+        console.warn('Could not delete existing generated material:', e.message);
       }
-    } catch (e) {
-      console.warn('Could not delete existing generated material:', e.message);
     }
     
     // Generate new teaching materials using LLM with RAG context
@@ -680,14 +779,27 @@ const regenerateMaterials = async (req, res) => {
     );
     
     // Create a new material record for the generated content
+    const displayType = getDisplayType(options.generationType);
+    const styleLabel = getStyleLabel(options.style);
+    const levelLabel = getLevelLabel(options.level, options.targetAudience);
+    const baseTitle = options.title && options.title.trim() !== ''
+      ? options.title.trim()
+      : `${material.title} - ${displayType} - ${styleLabel} - ${levelLabel}`;
+    const generatedTitle = await ensureUniqueTitle(baseTitle);
     const newMaterial = await materialModel.create(
-      `${material.title} - Teaching Materials`,
+      generatedTitle,
       generatedMaterials,
       'generated',
       {
         parentMaterialId: material.id,
         sourceFilename,
-        sourceFiles
+        sourceFiles,
+        generationType: options.generationType || 'learning_materials',
+        generationTypeLabel: displayType,
+        style: options.style || 'academic',
+        styleLabel,
+        level: options.level || null,
+        levelLabel
       }
     );
     
@@ -700,7 +812,13 @@ const regenerateMaterials = async (req, res) => {
         content: newMaterial.content,
         sourceType: newMaterial.source_type,
         sourceFiles: newMaterial.source_files || sourceFiles,
-        parentMaterialId: newMaterial.parent_material_id
+        parentMaterialId: newMaterial.parent_material_id,
+        generationType: options.generationType || 'learning_materials',
+        generationTypeLabel: displayType,
+        style: options.style || 'academic',
+        styleLabel,
+        level: options.level || null,
+        levelLabel
       }
     });
   } catch (error) {

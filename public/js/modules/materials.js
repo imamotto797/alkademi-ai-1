@@ -77,15 +77,7 @@ class MaterialsModule {
         utils.DOM.hide(noMaterials);
 
         try {
-            // Add timeout to prevent hanging forever
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Request timeout')), 10000)
-            );
-
-            const response = await Promise.race([
-                api.getMaterials(),
-                timeoutPromise
-            ]);
+            const response = await api.getMaterials();
             
             console.log('[MaterialsModule] API response:', response);
             
@@ -111,8 +103,11 @@ class MaterialsModule {
             // Show empty state with helpful message
             utils.DOM.hide(container);
             utils.DOM.show(noMaterials);
-            if (utils.Notification?.error) {
-                utils.Notification.error('Failed to load materials: ' + error.message);
+            const msg = (error && error.message) ? error.message : 'Unknown error';
+            if (msg === 'Request timeout') {
+                console.warn('[MaterialsModule] Timeout loading materials; showing empty state.');
+            } else if (utils.Notification?.error) {
+                utils.Notification.error('Failed to load materials: ' + msg);
             }
         } finally {
             utils.DOM.hide(loading);

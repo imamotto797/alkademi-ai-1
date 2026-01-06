@@ -9,6 +9,12 @@ console.log('🔍 All env vars:', Object.keys(process.env).filter(k => k.include
 if (process.env.NEON_DB_URL) {
   pool = new Pool({
     connectionString: process.env.NEON_DB_URL,
+    max: 5,
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
+    keepAlive: true,
+    statement_timeout: 60000,
+    query_timeout: 60000
   });
 } else {
   console.warn('⚠️ NEON_DB_URL not configured. Database features will be disabled.');
@@ -24,6 +30,14 @@ const initDB = async () => {
   try {
     // Enable pgvector extension
     await pool.query('CREATE EXTENSION IF NOT EXISTS vector');
+
+    // Set statement timeout for long-running queries
+    try {
+      await pool.query('SET statement_timeout = 60000');
+    } catch (e) {
+      // Some managed providers may not allow SET statement_timeout
+      console.warn('Could not set statement_timeout:', e.message);
+    }
     
     // Create materials table with is_deleted for soft deletes
     await pool.query(`
